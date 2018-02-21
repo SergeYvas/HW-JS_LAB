@@ -2,6 +2,7 @@ const stdout = process.stdout;
 const stdin  = process.stdin;
 
 
+
 class CardDeck {
     constructor(name){
         this.deckName = name;
@@ -88,36 +89,129 @@ class ShuffleMachine {
     }
 }
 
-let shuffleBase = new ShuffleMachine(3);
-
-let score = 0;
-let card  = null;
-
-stdin.on('data', data => {
-    let buf = data.slice(0,data.length-2).toString();
-    switch(buf){
-        case 'give':
-            card = shuffleBase.giveCard();
-            card.cost === 11 && console.log('You have Ace! Chose value 11 or 1!');
-            score = score + card.cost;
-
-            score === 21 && console.log("\x1b[33m",'\nYou win',"\x1b[0m");
-            score > 21 && console.log("\x1b[31m",'\nYou lose',"\x1b[0m");
-
-            console.log(`\nCard ${card.name} with cost ${card.cost}`);
-            console.log(`You'r score ${score}`);
-            console.log(`Card in the desk ${shuffleBase.currentDeck.length}\n\n`);
-            break;
-        case 'score':
-            console.log(`You'r score ${score}\n\n`);
-            break;
-        case 'reset':
-            score = 0;
-            shuffleBase = new ShuffleMachine(3);
-            console.log(`You'r game is reset. New desk lenght is ${shuffleBase.currentDeck.length}}\n\n`);
-            break;
+class Player {
+    constructor(role = 'person'){
+        this.role = role;
+        this.score = 0;
+        this.currentCard = {};
+        this.cardInHand = [];
     }
+    takeCard(){
+        if(this.role === 'person'){
+            this.currentCard = shuffleBase.giveCard();
+            this.cardInHand.cost === 11 && this.choseValueOfAce();
+            console.log(`${this.role} take a ${this.currentCard.name} with cost ${this.currentCard.cost}\n`);
+            this.figureoutScore();
+            this.cardInHand.push(this.currentCard)
+        } else {
+            this.currentCard = shuffleBase.giveCard();
+            console.log(`${this.role} take aa ${this.currentCard.name} with cost ${this.currentCard.cost}\n`);
+            this.figureoutScore();
+            this.cardInHand.push(this.currentCard)
+        }
+    }
+    choseValueOfAce(){
+        stdout.write('You have Ace! Chose value 11 or 1!\n');
+        stdin.on('data', data => {
+            let buf = parseInt(data.slice(0,data.length-2));
+            switch (buf){
+                case buf === 1:
+                    this.currentCard.cost = 1;
+                    break;
+                case buf === 11:
+                    this.currentCard.cost = 11;
+                    break;
+                default:
+                    this.currentCard.cost = 11;
+                    break;
+            }
+        })
+    }
+    figureoutScore(){
+        this.score = this.score + this.currentCard.cost;
+    }
+    showScore(){
+        console.log(`The ${this.role} score is ${this.score}\n`)
+    }
+    myCards(){
+        this.cardInHand.forEach(item=>{
+            let msg = `Card ${item.name} with cost ${item.cost}\n`;
+            stdout.write(msg)
+        })
+    }
+    reset(){
+        this.score = 0;
+        this.currentCard = {};
+        this.cardInHand = [];
+    }
+}
 
 
-});
+
+blackJack();
+const shuffleBase = new ShuffleMachine(3);
+const dialer = new Player('dialer');
+const person = new Player('person');
+
+function blackJack() {
+    stdout.write('Welcome to BlackJack!\n');
+    stdin.on('data', data => {
+        let buf = data.slice(0,data.length-2).toString();
+        switch(buf){
+            case 'take':
+                person.takeCard();
+                dialer.takeCard();
+                if(person.score > 21){
+                    console.log('Person lose');
+                    person.showScore();
+                    dialer.showScore();
+                    person.myCards();
+                    dialer.reset();
+                    person.reset();
+                    break;
+                } else if (person.score === 21){
+                    console.log('Person win');
+                    person.showScore();
+                    dialer.showScore();
+                    person.myCards();
+                    dialer.reset();
+                    person.reset();
+                    break;
+                } else {
+                    person.showScore();
+                }
+                if(dialer.score > 21){
+                    console.log('Dialer lose');
+                    dialer.showScore();
+                    person.showScore();
+                    dialer.myCards();
+                    dialer.reset();
+                    person.reset();
+                    break;
+                } else if (dialer.score === 21){
+                    console.log('Dialer win');
+                    dialer.showScore();
+                    person.showScore();
+                    dialer.myCards();
+                    dialer.reset();
+                    person.reset();
+                    break;
+                } else {
+                    dialer.showScore();
+                }
+
+                break;
+            case 'my cards':
+                person.myCards();
+                break;
+            case 'score':
+                person.showScore();
+                dialer.showScore();
+                break;
+        }
+
+
+    });
+
+}
 
